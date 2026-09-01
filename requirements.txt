@@ -1,0 +1,5 @@
+strands-agents
+hypothesis
+pytest
+boto3
+python-dotenv

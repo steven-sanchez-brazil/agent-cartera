@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cartera-strands-agent
+  labels:
+    app: cartera-strands-agent
+    version: "1.0"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cartera-strands-agent
+  template:
+    metadata:
+      labels:
+        app: cartera-strands-agent
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: cartera-strands-agent
+          image: cartera-strands-agent:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            # Variables sensibles desde Secret
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cartera-strands-agent-secret
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cartera-strands-agent-secret
+                  key: AWS_SECRET_ACCESS_KEY
+            # Variables de configuración desde ConfigMap
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: cartera-strands-agent-config
+                  key: AWS_REGION
+            - name: BEDROCK_MODEL_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: cartera-strands-agent-config
+                  key: BEDROCK_MODEL_ID
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+      restartPolicy: Always
