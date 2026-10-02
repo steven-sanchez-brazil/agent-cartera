@@ -5,8 +5,8 @@ import os
 from dataclasses import dataclass
 from typing import Optional
 
-from strands import tool
-from strands import Agent
+from strands import Agent, tool
+from strands.models import BedrockModel
 
 
 # ---------------------------------------------------------------------------
@@ -156,12 +156,19 @@ def run_agent(
     )
 
     # 4. Construir el Agent de Strands con las herramientas
-    agent = Agent(
-        system_prompt=system_prompt,
-        tools=[clasificar_riesgo, determinar_estrategia],
-        region=region,
-        model=model_id,
+    bedrock_model = BedrockModel(
+      model_id=model_id,
+      region_name=region,
     )
+
+    agent = Agent(
+      system_prompt=system_prompt,
+      tools=[clasificar_riesgo, determinar_estrategia],
+      model=bedrock_model,
+      callback_handler=None,
+    )
+
+    
 
     # 5. Determinar clasificación determinista y construir el mensaje
     nivel_riesgo = clasificar_riesgo(dias_mora, incumplimientos_previos)
