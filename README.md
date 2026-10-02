@@ -24,23 +24,16 @@ El proyecto representa **un solo producto: el agente de cartera**, con dos modos
 ## Arquitectura
 
 ```text
-                         Agente de cartera
-                                │
-            ┌─────────────────────────────┐
-            │                             │
-            ▼                             ▼
-  Modo estructurado                 Modo conversacional
-       main.py                            chat.py
-            │                             │
-            │                    Lenguaje natural
-            │                             │
-            │                    Tools y fuentes locales
-            └──────────────┬──────────────┘
-                           ▼
-                    Bedrock Runtime
-                           │
-                           ▼
-                    Amazon Nova Lite
+Navegador ──→ Portal web ──→ FastAPI /v1/chat ──┐
+                                                │
+Terminal ──→ chat.py ──→ lenguaje natural ──────┤
+                                                ├─→ Strands Agent
+Sistema ──→ main.py ──→ campos estructurados ───┘         │
+                                                          ├─→ tools
+                                                          ├─→ fuentes locales
+                                                          └─→ Bedrock Runtime
+                                                                    │
+                                                                    └─→ Nova Lite
 ```
 
 La clasificación y la estrategia se calculan en el código. El modelo interpreta la consulta y genera la explicación, pero no decide por sí solo el nivel de riesgo.
@@ -60,6 +53,7 @@ Los modos no se llaman entre sí. Solo se instancia y ejecuta el seleccionado po
 cartera-strands-agent/
 ├── app/
 │   ├── __init__.py
+│   ├── api.py                # API FastAPI y sesiones de demostración
 │   ├── agent.py              # Reglas y modo CLI estructurado
 │   ├── conversational_agent.py # Construcción del agente conversacional
 │   ├── local_tools.py        # Tools de consulta y validación
@@ -70,7 +64,9 @@ cartera-strands-agent/
 │   └── politicas.json
 ├── tests/
 │   ├── integration/
-│   │   └── __init__.py
+│   │   ├── __init__.py
+│   │   └── test_agent_real.py
+│   ├── test_api.py
 │   ├── test_agent.py
 │   ├── test_clasificador.py
 │   ├── test_conversational_agent.py
@@ -83,9 +79,24 @@ cartera-strands-agent/
 ├── prompt.md                   # Instrucciones del agente
 ├── prompt_conversacional.md    # Reglas del modo conversacional
 ├── .env.example                # Ejemplo de configuración local
+├── .dockerignore               # Exclusiones sensibles del contexto Docker
 ├── Dockerfile
+├── pytest.ini                  # Marcador de pruebas de integración
 └── requirements.txt
 ```
+
+## Inicio rápido de la demo
+
+```bash
+python3.12 -m venv .venv312
+source .venv312/bin/activate
+python -m pip install -r requirements.txt
+cp .env.example .env
+aws sts get-caller-identity
+uvicorn app.api:app --host 0.0.0.0 --port 8080 --reload
+```
+
+Después abre `http://127.0.0.1:8080` y utiliza uno de los casos sugeridos en pantalla.
 
 ## Requisitos
 
@@ -140,6 +151,7 @@ BEDROCK_MODEL_ID=amazon.nova-lite-v1:0
 | `BEDROCK_MODEL_ID` | No | `amazon.nova-lite-v1:0` | ID de modelo o de inference profile. Se recomienda definirlo explícitamente. |
 | `AWS_PROFILE` | No | Perfil predeterminado de AWS | Perfil configurado con AWS CLI. |
 | `AWS_SESSION_TOKEN` | Según el caso | — | Necesario cuando se utilizan credenciales temporales. |
+| `MAX_DEMO_SESSIONS` | No | `100` | Número máximo de sesiones en memoria antes de retirar la más antigua. |
 
 `boto3` también admite `AWS_ACCESS_KEY_ID` y `AWS_SECRET_ACCESS_KEY`, pero para desarrollo se prefieren perfiles, SSO o credenciales temporales.
 
@@ -243,6 +255,8 @@ http://127.0.0.1:8080
 
 La interfaz permite iniciar sesiones, enviar consultas en lenguaje natural y ver el modelo, trace ID y fuentes reportadas en cada respuesta. Las sesiones se conservan solo en memoria y se pierden cuando el servidor se reinicia.
 
+Cada `session_id` mantiene su propia instancia conversacional. Para limitar el consumo de memoria, la demo conserva hasta 100 sesiones por defecto y elimina la menos reciente al superar ese valor. Esto es apropiado para una demostración, no para producción ni para ejecutar múltiples réplicas.
+
 Endpoints disponibles:
 
 | Método | Ruta | Función |
@@ -305,6 +319,7 @@ python -m pytest \
   tests/test_agent.py \
   tests/test_repository.py \
   tests/test_conversational_agent.py \
+  tests/test_api.py \
   -v
 ```
 
@@ -345,6 +360,47 @@ aws sts get-caller-identity
 
 La identidad necesita acceso al modelo o inference profile y los permisos de invocación indicados en la sección de requisitos.
 
+### `NoCredentialsError: Unable to locate credentials` dentro de Docker
+
+Las credenciales configuradas con AWS CLI permanecen en el equipo y no ingresan automáticamente al contenedor. Para una demo local, expórtalas temporalmente desde el perfil:
+
+```bash
+eval "$(aws configure export-credentials \
+  --profile default \
+  --format env)"
+```
+
+Si usas SSO o un perfil con otro nombre:
+
+```bash
+aws sso login --profile nombre-del-perfil
+eval "$(aws configure export-credentials \
+  --profile nombre-del-perfil \
+  --format env)"
+```
+
+Pasa únicamente los nombres de las variables al contenedor, sin escribir sus valores en el comando:
+
+```bash
+docker run --rm \
+  --env-file .env \
+  -e AWS_ACCESS_KEY_ID \
+  -e AWS_SECRET_ACCESS_KEY \
+  -e AWS_SESSION_TOKEN \
+  -p 8080:8080 \
+  cartera-agent-demo
+```
+
+Al terminar:
+
+```bash
+unset AWS_ACCESS_KEY_ID
+unset AWS_SECRET_ACCESS_KEY
+unset AWS_SESSION_TOKEN
+```
+
+No guardes estas credenciales en `.env`, el Dockerfile, la imagen ni Git.
+
 ### La respuesta aparece duplicada o muestra `Tool #1`
 
 El agente debe construirse con `callback_handler=None`. Esto desactiva la impresión incremental de Strands; `main.py` imprime solamente el resultado final.
@@ -358,14 +414,32 @@ Las invocaciones reales a Bedrock se cobran según el modelo y la cantidad de to
 ### Docker
 
 ```bash
-docker build -t cartera-strands-agent .
-docker run --env-file .env -p 8080:8080 cartera-strands-agent
+docker build -t cartera-agent-demo .
 ```
 
-Abre `http://127.0.0.1:8080`. Para ejecutar el modo estructurado dentro del contenedor:
+El contenedor no hereda automáticamente las credenciales de `aws configure`. Expórtalas como se explica en **Solución de problemas** y ejecútalo:
 
 ```bash
-docker run --rm --env-file .env cartera-strands-agent \
+docker run --rm \
+  --env-file .env \
+  -e AWS_ACCESS_KEY_ID \
+  -e AWS_SECRET_ACCESS_KEY \
+  -e AWS_SESSION_TOKEN \
+  -p 8080:8080 \
+  cartera-agent-demo
+```
+
+Abre `http://127.0.0.1:8080`. La imagen inicia FastAPI mediante Uvicorn, expone el puerto 8080 y contiene un health check sobre `/health`.
+
+Para ejecutar el modo estructurado dentro del contenedor:
+
+```bash
+docker run --rm \
+  --env-file .env \
+  -e AWS_ACCESS_KEY_ID \
+  -e AWS_SECRET_ACCESS_KEY \
+  -e AWS_SESSION_TOKEN \
+  cartera-agent-demo \
   python main.py \
   --client-id 12345 \
   --deuda 8000000 \
@@ -384,3 +458,14 @@ kubectl apply -f kubernetes/
 ## AgentCore
 
 Este repositorio no está desplegado en Amazon Bedrock AgentCore. AgentCore sería una etapa posterior para alojar el agente como servicio administrado, manejar sesiones y versiones, agregar observabilidad o memoria, y conectar herramientas empresariales mediante Gateway.
+
+## Alcance y limitaciones de la demo
+
+- Todos los clientes y movimientos son ficticios.
+- Las fuentes JSON son de solo lectura y simulan sistemas empresariales.
+- Las sesiones se almacenan en RAM y se pierden al reiniciar.
+- No existe autenticación ni autorización corporativa.
+- Un `user_id` identifica la solicitud, pero todavía no concede ni restringe permisos.
+- El agente recomienda; no modifica deudas, crea acuerdos ni ejecuta pagos.
+- El portal y la API no deben exponerse públicamente sin autenticación, HTTPS, límites de tráfico y persistencia apropiada.
+- Para Kubernetes se debe usar una identidad de workload, como EKS Pod Identity; para AgentCore se debe asignar un rol IAM al runtime. No se deben distribuir claves estáticas.
