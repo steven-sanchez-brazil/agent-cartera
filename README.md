@@ -4,6 +4,8 @@ Agente de gestión de cartera vencida construido con **Strands Agents SDK** y **
 
 > Este proyecto ejecuta el agente localmente y consume modelos mediante Bedrock Runtime. No utiliza Amazon Bedrock AgentCore por el momento.
 
+El proyecto representa **un solo producto: el agente de cartera**, con dos modos de operación. El modo estructurado recibe campos por CLI y el modo conversacional interpreta lenguaje natural y consulta fuentes locales. Técnicamente, cada modo crea su propia instancia de `strands.Agent`, pero no son dos agentes colaborando ni se ejecutan al mismo tiempo.
+
 ## Características
 
 - Clasificación determinista de riesgo: `BAJO`, `MEDIO` o `ALTO`.
@@ -20,14 +22,35 @@ Agente de gestión de cartera vencida construido con **Strands Agents SDK** y **
 ## Arquitectura
 
 ```text
-Usuario → chat.py → Strands Agent → tools → fuentes locales
-                           ↓
+                         Agente de cartera
+                                │
+            ┌─────────────────────────────┐
+            │                             │
+            ▼                             ▼
+  Modo estructurado                 Modo conversacional
+       main.py                            chat.py
+            │                             │
+            │                    Lenguaje natural
+            │                             │
+            │                    Tools y fuentes locales
+            └──────────────┬──────────────┘
+                           ▼
                     Bedrock Runtime
-                           ↓
+                           │
+                           ▼
                     Amazon Nova Lite
 ```
 
-La clasificación y la estrategia se calculan en el código. El modelo genera la explicación en lenguaje natural; no decide por sí solo el nivel de riesgo.
+La clasificación y la estrategia se calculan en el código. El modelo interpreta la consulta y genera la explicación, pero no decide por sí solo el nivel de riesgo.
+
+### Diferencia entre los dos modos
+
+| Modo | Entrada | Consulta fuentes locales | Mantiene contexto | Uso recomendado |
+|---|---|---:|---:|---|
+| Estructurado (`main.py`) | Argumentos como `--deuda` y `--dias-mora` | No | No | Automatizaciones que ya poseen todos los datos. |
+| Conversacional (`chat.py`) | Preguntas en lenguaje natural | Sí | Sí, durante el proceso actual | Interacción con personas y exploración de los datos locales. |
+
+Los modos no se llaman entre sí. Solo se instancia y ejecuta el seleccionado por el comando del usuario.
 
 ## Estructura
 
@@ -48,6 +71,8 @@ cartera-strands-agent/
 │   │   └── __init__.py
 │   ├── test_agent.py
 │   ├── test_clasificador.py
+│   ├── test_conversational_agent.py
+│   ├── test_repository.py
 │   └── test_validacion.py
 ├── kubernetes/                 # Manifiestos base de Kubernetes
 ├── main.py                     # Interfaz de línea de comandos
@@ -139,7 +164,11 @@ aws bedrock list-inference-profiles \
 
 ## Uso desde la terminal
 
+Elige solamente uno de los siguientes modos para cada ejecución.
+
 ### Modo conversacional
+
+Utilízalo cuando una persona quiera consultar al agente en lenguaje natural y los datos deban recuperarse desde `data/`.
 
 ```bash
 python chat.py
@@ -159,6 +188,8 @@ En el último caso, el agente solicitará el identificador faltante. El mismo pr
 Durante el análisis, el agente consulta las fuentes en `data/`, valida la información, aplica las reglas deterministas y reporta las fuentes utilizadas. Los datos incluidos son ficticios y deben reemplazarse por integraciones autorizadas antes de usar el proyecto en un entorno real.
 
 ### Modo estructurado
+
+Utilízalo cuando otro proceso ya conozca todos los datos del cliente y necesite una ejecución puntual, predecible y fácil de automatizar.
 
 Salida legible:
 
