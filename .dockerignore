@@ -1,8 +1,12 @@
 .env
+.git
+.gitignore
 .venv/
 .venv312/
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .DS_Store
+tests/
+export-*.md
 codex-session-*.md

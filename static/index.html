@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Demostración del agente de gestión de cartera con Amazon Bedrock." />
+    <title>Agente de Cartera · Demo</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">AC</span>
+          <div>
+            <strong>Agente de Cartera</strong>
+            <span>Entorno de demostración</span>
+          </div>
+        </div>
+        <div class="status"><span></span> Bedrock conectado</div>
+      </header>
+
+      <main>
+        <section class="workspace" aria-label="Conversación con el agente">
+          <div class="workspace-header">
+            <div>
+              <p class="eyebrow">Análisis asistido</p>
+              <h1>Consulta de cartera</h1>
+            </div>
+            <button id="new-session" class="secondary-button" type="button">Nueva sesión</button>
+          </div>
+
+          <div id="messages" class="messages" aria-live="polite">
+            <article class="message agent-message">
+              <div class="avatar" aria-hidden="true">A</div>
+              <div class="message-content">
+                <span class="message-author">Agente</span>
+                <p>Indica el cliente que deseas consultar. Puedo analizar deuda, mora, historial y recomendar una gestión respaldada por la política local.</p>
+              </div>
+            </article>
+          </div>
+
+          <div class="suggestions" aria-label="Consultas sugeridas">
+            <button type="button" data-prompt="Analiza el riesgo del cliente 10001">Riesgo bajo</button>
+            <button type="button" data-prompt="Analiza el riesgo del cliente 10002">Riesgo medio</button>
+            <button type="button" data-prompt="Analiza el riesgo del cliente 10004">Riesgo alto</button>
+            <button type="button" data-prompt="Analiza el cliente 10006">Dato faltante</button>
+            <button type="button" data-prompt="Analiza el cliente 10007">Inconsistencia</button>
+          </div>
+
+          <form id="chat-form" class="composer">
+            <label for="message" class="sr-only">Consulta</label>
+            <textarea id="message" rows="2" maxlength="4000" placeholder="Ejemplo: Analiza el cliente 12345" required></textarea>
+            <button id="send-button" type="submit">Enviar consulta</button>
+          </form>
+        </section>
+
+        <aside class="context-panel" aria-label="Contexto de ejecución">
+          <section>
+            <p class="eyebrow">Trazabilidad</p>
+            <h2>Detalle de la consulta</h2>
+            <dl class="trace-list">
+              <div><dt>Sesión</dt><dd id="session-value">—</dd></div>
+              <div><dt>Traza</dt><dd id="trace-value">Aún sin ejecución</dd></div>
+              <div><dt>Modelo</dt><dd id="model-value">amazon.nova-lite-v1:0</dd></div>
+              <div><dt>Estado</dt><dd id="request-status">Listo</dd></div>
+            </dl>
+          </section>
+
+          <section>
+            <p class="eyebrow">Fuentes</p>
+            <h2>Consultadas en la respuesta</h2>
+            <ul id="sources" class="source-list">
+              <li>Sin fuentes consultadas todavía</li>
+            </ul>
+          </section>
+
+          <div class="demo-notice">
+            <strong>Uso demostrativo</strong>
+            <p>Los datos son ficticios. Las recomendaciones requieren validación humana y no ejecutan transacciones financieras.</p>
+          </div>
+        </aside>
+      </main>
+    </div>
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>

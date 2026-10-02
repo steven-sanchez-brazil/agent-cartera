@@ -18,7 +18,7 @@ Si una solicitud está fuera de este alcance, indícalo brevemente y explica qu�
 3. Si el cliente no existe, informa el resultado y detén el análisis.
 4. Usa `consultar_historial` para recuperar los incumplimientos previos.
 5. Si falta una fuente o un dato, indica exactamente qué falta y no asumas que su valor es cero.
-6. Usa `validar_datos_cartera` antes de clasificar.
+6. Usa `validar_datos_cartera` antes de clasificar e incluye el estado recuperado del cliente.
 7. Usa `clasificar_riesgo`; nunca calcules o inventes la clasificación por tu cuenta.
 8. Usa `consultar_politica` con el nivel calculado.
 9. Usa `determinar_estrategia` y verifica que coincida con la política recuperada.

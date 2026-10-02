@@ -1,14 +1,10 @@
 [
-  {
-    "client_id": "12345",
-    "incumplimientos_previos": 1,
-    "ultimo_pago": "2026-07-10",
-    "acuerdos_incumplidos": 1
-  },
-  {
-    "client_id": "67890",
-    "incumplimientos_previos": 0,
-    "ultimo_pago": "2026-09-15",
-    "acuerdos_incumplidos": 0
-  }
+  {"client_id": "12345", "incumplimientos_previos": 1, "ultimo_pago": "2026-07-10", "acuerdos_incumplidos": 1},
+  {"client_id": "67890", "incumplimientos_previos": 0, "ultimo_pago": "2026-09-15", "acuerdos_incumplidos": 0},
+  {"client_id": "10001", "incumplimientos_previos": 0, "ultimo_pago": "2026-09-20", "acuerdos_incumplidos": 0},
+  {"client_id": "10002", "incumplimientos_previos": 0, "ultimo_pago": "2026-08-15", "acuerdos_incumplidos": 0},
+  {"client_id": "10003", "incumplimientos_previos": 1, "ultimo_pago": "2026-09-05", "acuerdos_incumplidos": 1},
+  {"client_id": "10004", "incumplimientos_previos": 0, "ultimo_pago": "2026-06-20", "acuerdos_incumplidos": 0},
+  {"client_id": "10005", "incumplimientos_previos": 3, "ultimo_pago": "2026-08-28", "acuerdos_incumplidos": 2},
+  {"client_id": "10007", "incumplimientos_previos": 0, "ultimo_pago": "2026-09-01", "acuerdos_incumplidos": 0}
 ]

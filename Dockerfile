@@ -29,10 +29,16 @@ COPY prompt.md .
 COPY prompt_conversacional.md .
 COPY main.py .
 COPY chat.py .
+COPY static/ ./static/
 
 # Usuario no-root para seguridad
 RUN useradd --no-create-home --shell /bin/false appuser
 USER appuser
 
-# Punto de entrada: ejecutar el agente como módulo
-CMD ["python", "main.py"]
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"]
+
+# Punto de entrada predeterminado: API y portal de demostración
+CMD ["uvicorn", "app.api:app", "--host", "0.0.0.0", "--port", "8080"]

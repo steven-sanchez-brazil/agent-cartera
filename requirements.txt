@@ -3,3 +3,6 @@ hypothesis
 pytest
 boto3
 python-dotenv
+fastapi
+uvicorn[standard]
+httpx

@@ -1,16 +1,11 @@
- [
-    {
-      "client_id": "12345",
-      "nombre": "Cliente de prueba",
-      "deuda": 8000000,
-      "dias_mora": 75,
-      "estado": "VENCIDA"
-    },
-    {
-      "client_id": "67890",
-      "nombre": "Cliente de prueba 2",
-      "deuda": 1200000,
-      "dias_mora": 25,
-      "estado": "VENCIDA"
-    }
-  ]
+[
+  {"client_id": "12345", "nombre": "Cliente de prueba", "deuda": 8000000, "dias_mora": 75, "estado": "VENCIDA"},
+  {"client_id": "67890", "nombre": "Cliente de prueba 2", "deuda": 1200000, "dias_mora": 25, "estado": "VENCIDA"},
+  {"client_id": "10001", "nombre": "Caso riesgo bajo", "deuda": 450000, "dias_mora": 12, "estado": "VENCIDA"},
+  {"client_id": "10002", "nombre": "Caso riesgo medio por mora", "deuda": 2600000, "dias_mora": 45, "estado": "VENCIDA"},
+  {"client_id": "10003", "nombre": "Caso riesgo medio por antecedente", "deuda": 950000, "dias_mora": 10, "estado": "VENCIDA"},
+  {"client_id": "10004", "nombre": "Caso riesgo alto por mora", "deuda": 12500000, "dias_mora": 95, "estado": "VENCIDA"},
+  {"client_id": "10005", "nombre": "Caso riesgo alto por incumplimientos", "deuda": 4100000, "dias_mora": 20, "estado": "VENCIDA"},
+  {"client_id": "10006", "nombre": "Caso con historial faltante", "deuda": 1700000, "dias_mora": 38, "estado": "VENCIDA"},
+  {"client_id": "10007", "nombre": "Caso con información contradictoria", "deuda": 3200000, "dias_mora": 40, "estado": "AL_DIA"}
+]

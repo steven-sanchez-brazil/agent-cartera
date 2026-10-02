@@ -16,6 +16,8 @@ El proyecto representa **un solo producto: el agente de cartera**, con dos modos
 - Consultas en lenguaje natural con contexto durante la sesión.
 - Fuentes locales ficticias para clientes, historial y políticas.
 - Trazabilidad de las fuentes y versión de la política consultada.
+- API HTTP con sesiones temporales separadas por `session_id`.
+- Portal web responsive para presentar la demostración.
 - Degradación controlada cuando el modelo no está disponible.
 - Archivos base para despliegue con Docker y Kubernetes.
 
@@ -75,6 +77,7 @@ cartera-strands-agent/
 │   ├── test_repository.py
 │   └── test_validacion.py
 ├── kubernetes/                 # Manifiestos base de Kubernetes
+├── static/                     # Portal web de demostración
 ├── main.py                     # Interfaz de línea de comandos
 ├── chat.py                     # Interfaz conversacional
 ├── prompt.md                   # Instrucciones del agente
@@ -224,6 +227,55 @@ Justificación:
 
 La justificación puede variar. Si Bedrock falla, se conservan la clasificación y la estrategia deterministas, y la salida incluye una advertencia o el campo JSON `error`.
 
+## Demo web y API
+
+Inicia el servidor local:
+
+```bash
+uvicorn app.api:app --host 0.0.0.0 --port 8080 --reload
+```
+
+Abre en el navegador:
+
+```text
+http://127.0.0.1:8080
+```
+
+La interfaz permite iniciar sesiones, enviar consultas en lenguaje natural y ver el modelo, trace ID y fuentes reportadas en cada respuesta. Las sesiones se conservan solo en memoria y se pierden cuando el servidor se reinicia.
+
+Endpoints disponibles:
+
+| Método | Ruta | Función |
+|---|---|---|
+| `GET` | `/health` | Comprueba que el proceso responde. |
+| `GET` | `/ready` | Comprueba que las fuentes locales existen. |
+| `POST` | `/v1/chat` | Envía un mensaje a una sesión conversacional. |
+| `GET` | `/docs` | Documentación interactiva de FastAPI. |
+
+Ejemplo de API:
+
+```bash
+curl -X POST http://127.0.0.1:8080/v1/chat \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "session_id": "demo-001",
+    "user_id": "usuario-demo",
+    "message": "Analiza el riesgo del cliente 12345"
+  }'
+```
+
+Casos preparados para la demostración:
+
+| Cliente | Escenario esperado |
+|---|---|
+| `10001` | Riesgo bajo. |
+| `10002` | Riesgo medio por mora. |
+| `10003` | Riesgo medio por antecedente. |
+| `10004` | Riesgo alto por mora. |
+| `10005` | Riesgo alto por incumplimientos. |
+| `10006` | Historial faltante; el agente no debe asumir datos. |
+| `10007` | Estado contradictorio; requiere revisión humana. |
+
 ## Uso desde Python
 
 ```python
@@ -256,7 +308,22 @@ python -m pytest \
   -v
 ```
 
-Actualmente no existe una prueba de integración automatizada contra Bedrock. Los comandos de `main.py` y `chat.py` funcionan como pruebas manuales reales y pueden generar cargos por tokens.
+Existe una prueba de integración opcional contra Bedrock. Los comandos de `main.py` y `chat.py` también funcionan como pruebas manuales reales y pueden generar cargos por tokens.
+
+La prueba real opcional está separada para evitar consumo accidental. Ejecútala solamente cuando quieras autorizar una llamada a Bedrock:
+
+```bash
+RUN_BEDROCK_INTEGRATION=1 python -m pytest \
+  tests/integration/test_agent_real.py \
+  -m integration \
+  -v
+```
+
+Para excluir siempre las llamadas reales:
+
+```bash
+python -m pytest -m "not integration" -v
+```
 
 ## Solución de problemas
 
@@ -292,17 +359,18 @@ Las invocaciones reales a Bedrock se cobran según el modelo y la cantidad de to
 
 ```bash
 docker build -t cartera-strands-agent .
-docker run --env-file .env cartera-strands-agent \
+docker run --env-file .env -p 8080:8080 cartera-strands-agent
+```
+
+Abre `http://127.0.0.1:8080`. Para ejecutar el modo estructurado dentro del contenedor:
+
+```bash
+docker run --rm --env-file .env cartera-strands-agent \
+  python main.py \
   --client-id 12345 \
   --deuda 8000000 \
   --dias-mora 75 \
   --incumplimientos 1
-```
-
-Para iniciar el modo conversacional dentro del contenedor:
-
-```bash
-docker run -it --env-file .env cartera-strands-agent python chat.py
 ```
 
 ### Kubernetes

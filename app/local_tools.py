@@ -69,6 +69,7 @@ def validar_datos_cartera(
     deuda: float,
     dias_mora: int,
     incumplimientos_previos: int,
+    estado: str | None = None,
 ) -> dict[str, Any]:
     """Valida completitud y consistencia básica antes de analizar la cartera."""
     faltantes = [
@@ -90,8 +91,21 @@ def validar_datos_cartera(
         if valor is not None and valor < 0:
             invalidos.append(nombre)
 
+    inconsistencias = []
+    estado_normalizado = estado.strip().upper() if estado else None
+    if estado_normalizado == "AL_DIA" and dias_mora and dias_mora > 0:
+        inconsistencias.append(
+            "El estado AL_DIA contradice un valor positivo de dias_mora"
+        )
+    if estado_normalizado == "VENCIDA" and dias_mora == 0:
+        inconsistencias.append(
+            "El estado VENCIDA contradice un valor de cero dias_mora"
+        )
+
     return {
-        "valido": not faltantes and not invalidos,
+        "valido": not faltantes and not invalidos and not inconsistencias,
         "campos_faltantes": faltantes,
         "campos_invalidos": invalidos,
+        "inconsistencias": inconsistencias,
+        "requiere_revision_humana": bool(inconsistencias),
     }

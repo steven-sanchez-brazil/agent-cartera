@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
 from strands import Agent
 from strands.models import BedrockModel
 
@@ -15,7 +16,9 @@ from app.local_tools import (
 )
 
 
-PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompt_conversacional.md"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROMPT_PATH = PROJECT_ROOT / "prompt_conversacional.md"
+load_dotenv(PROJECT_ROOT / ".env")
 
 
 def load_conversational_prompt() -> str:

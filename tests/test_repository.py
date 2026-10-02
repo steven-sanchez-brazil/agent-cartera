@@ -67,4 +67,19 @@ def test_validacion_acepta_datos_completos():
         "valido": True,
         "campos_faltantes": [],
         "campos_invalidos": [],
+        "inconsistencias": [],
+        "requiere_revision_humana": False,
     }
+
+
+def test_validacion_detecta_estado_contradictorio():
+    resultado = validar_datos_cartera("10007", 3_200_000, 40, 0, "AL_DIA")
+    assert resultado["valido"] is False
+    assert resultado["requiere_revision_humana"] is True
+    assert resultado["inconsistencias"]
+
+
+def test_dataset_incluye_casos_de_demostracion():
+    assert obtener_cliente("10001")["dias_mora"] == 12
+    assert obtener_cliente("10004")["dias_mora"] == 95
+    assert obtener_historial("10006") is None
