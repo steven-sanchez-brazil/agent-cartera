@@ -120,21 +120,15 @@ class TestRunAgent:
         env_sin_region = {k: v for k, v in os.environ.items() if k != "AWS_REGION"}
 
         with patch.dict(os.environ, env_sin_region, clear=True):
-            with patch("app.agent.Agent") as MockAgent:
-                MockAgent.return_value = mock_agent_instance
-                run_agent(
-                    client_id="CLI-003",
-                    deuda=200_000.0,
-                    dias_mora=5,
-                    incumplimientos_previos=0,
-                )
+            with patch("app.agent.BedrockModel") as MockBedrockModel:
+                with patch("app.agent.Agent") as MockAgent:
+                    MockAgent.return_value = mock_agent_instance
+                    run_agent(
+                        client_id="CLI-003",
+                        deuda=200_000.0,
+                        dias_mora=5,
+                        incumplimientos_previos=0,
+                    )
 
-                # Verificar que el Agent fue construido con region us-east-1
-                call_kwargs = MockAgent.call_args
-                assert call_kwargs is not None, "Agent debe haber sido instanciado"
-                # La región puede pasarse como kwarg 'region' o dentro de la config
-                args, kwargs = call_kwargs
-                region_usada = kwargs.get("region") or kwargs.get("aws_region")
-                assert region_usada == "us-east-1", (
-                    f"Se esperaba región 'us-east-1' pero se usó: {region_usada!r}"
-                )
+                MockBedrockModel.assert_called_once()
+                assert MockBedrockModel.call_args.kwargs["region_name"] == "us-east-1"

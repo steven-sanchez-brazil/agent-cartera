@@ -24,8 +24,11 @@ RUN pip install --no-cache-dir -r requirements.txt \
 
 # Copiar código fuente y prompt del sistema
 COPY app/ ./app/
+COPY data/ ./data/
 COPY prompt.md .
+COPY prompt_conversacional.md .
 COPY main.py .
+COPY chat.py .
 
 # Usuario no-root para seguridad
 RUN useradd --no-create-home --shell /bin/false appuser

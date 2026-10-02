@@ -1,0 +1,21 @@
+{
+  "version": "1.0",
+  "fecha_vigencia": "2026-10-01",
+  "reglas": {
+    "BAJO": {
+      "condicion": "Menos de 30 días de mora y sin incumplimientos previos",
+      "accion": "Seguimiento preventivo y recordatorio de pago",
+      "prioridad": "NORMAL"
+    },
+    "MEDIO": {
+      "condicion": "Entre 30 y 60 días de mora o un incumplimiento previo",
+      "accion": "Contacto directo y negociación de plan de pagos",
+      "prioridad": "MEDIA"
+    },
+    "ALTO": {
+      "condicion": "Más de 60 días de mora o dos o más incumplimientos previos",
+      "accion": "Gestión prioritaria de cobranza y evaluación de acuerdo de pago",
+      "prioridad": "ALTA"
+    }
+  }
+}

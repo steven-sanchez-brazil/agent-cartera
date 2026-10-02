@@ -1,0 +1,14 @@
+[
+  {
+    "client_id": "12345",
+    "incumplimientos_previos": 1,
+    "ultimo_pago": "2026-07-10",
+    "acuerdos_incumplidos": 1
+  },
+  {
+    "client_id": "67890",
+    "incumplimientos_previos": 0,
+    "ultimo_pago": "2026-09-15",
+    "acuerdos_incumplidos": 0
+  }
+]

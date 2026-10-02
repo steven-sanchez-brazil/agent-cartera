@@ -1,0 +1,16 @@
+ [
+    {
+      "client_id": "12345",
+      "nombre": "Cliente de prueba",
+      "deuda": 8000000,
+      "dias_mora": 75,
+      "estado": "VENCIDA"
+    },
+    {
+      "client_id": "67890",
+      "nombre": "Cliente de prueba 2",
+      "deuda": 1200000,
+      "dias_mora": 25,
+      "estado": "VENCIDA"
+    }
+  ]

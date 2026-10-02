@@ -71,7 +71,11 @@ def _validate_input(
     # 3. Verificar que los campos numéricos sean >= 0 — reporta todos los inválidos
     campos_negativos = [
         nombre
-        for nombre, valor in [("deuda", deuda), ("dias_mora", dias_mora)]
+        for nombre, valor in [
+            ("deuda", deuda),
+            ("dias_mora", dias_mora),
+            ("incumplimientos_previos", incumplimientos_previos),
+        ]
         if valor < 0
     ]
     if campos_negativos:
@@ -152,23 +156,21 @@ def run_agent(
     # 3. Leer configuración del entorno
     region = os.environ.get("AWS_REGION", "us-east-1")
     model_id = os.environ.get(
-        "BEDROCK_MODEL_ID", "anthropic.claude-3-sonnet-20240229-v1:0"
+        "BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0"
     )
 
     # 4. Construir el Agent de Strands con las herramientas
     bedrock_model = BedrockModel(
-      model_id=model_id,
-      region_name=region,
+        model_id=model_id,
+        region_name=region,
     )
 
     agent = Agent(
-      system_prompt=system_prompt,
-      tools=[clasificar_riesgo, determinar_estrategia],
-      model=bedrock_model,
-      callback_handler=None,
+        system_prompt=system_prompt,
+        tools=[clasificar_riesgo, determinar_estrategia],
+        model=bedrock_model,
+        callback_handler=None,
     )
-
-    
 
     # 5. Determinar clasificación determinista y construir el mensaje
     nivel_riesgo = clasificar_riesgo(dias_mora, incumplimientos_previos)
