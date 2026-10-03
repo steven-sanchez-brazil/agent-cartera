@@ -388,7 +388,7 @@ docker run --rm \
   -e AWS_SECRET_ACCESS_KEY \
   -e AWS_SESSION_TOKEN \
   -p 8080:8080 \
-  cartera-agent-demo
+  cartera-agent-demo:1.0.0
 ```
 
 Al terminar:
@@ -414,7 +414,7 @@ Las invocaciones reales a Bedrock se cobran según el modelo y la cantidad de to
 ### Docker
 
 ```bash
-docker build -t cartera-agent-demo .
+docker build -t cartera-agent-demo:1.0.0 .
 ```
 
 El contenedor no hereda automáticamente las credenciales de `aws configure`. Expórtalas como se explica en **Solución de problemas** y ejecútalo:
@@ -426,7 +426,7 @@ docker run --rm \
   -e AWS_SECRET_ACCESS_KEY \
   -e AWS_SESSION_TOKEN \
   -p 8080:8080 \
-  cartera-agent-demo
+  cartera-agent-demo:1.0.0
 ```
 
 Abre `http://127.0.0.1:8080`. La imagen inicia FastAPI mediante Uvicorn, expone el puerto 8080 y contiene un health check sobre `/health`.
@@ -439,7 +439,7 @@ docker run --rm \
   -e AWS_ACCESS_KEY_ID \
   -e AWS_SECRET_ACCESS_KEY \
   -e AWS_SESSION_TOKEN \
-  cartera-agent-demo \
+  cartera-agent-demo:1.0.0 \
   python main.py \
   --client-id 12345 \
   --deuda 8000000 \
@@ -449,11 +449,191 @@ docker run --rm \
 
 ### Kubernetes
 
-Los manifiestos de `kubernetes/` son una base y deben revisarse antes de usarlos en producción, especialmente la gestión de secretos y la identidad IAM del workload:
+Los manifiestos de `kubernetes/` despliegan la API y el portal mediante un `Deployment`, un `Service`, un `ConfigMap` y un `Secret`. El procedimiento siguiente está pensado para una demostración local con k3d.
+
+#### 1. Verificar el clúster
 
 ```bash
-kubectl apply -f kubernetes/
+k3d cluster list
+kubectl config current-context
+kubectl cluster-info
 ```
+
+Los ejemplos asumen que el clúster se llama `cartera-demo`. Si tiene otro nombre, reemplázalo en los comandos.
+
+#### 2. Construir e importar la imagen en k3d
+
+```bash
+docker build -t cartera-agent-demo:1.0.0 .
+k3d image import cartera-agent-demo:1.0.0 --cluster cartera-demo
+```
+
+La importación es necesaria porque los nodos de k3d no utilizan automáticamente todas las imágenes disponibles en Docker del equipo. El manifiesto usa `imagePullPolicy: Never`, por lo que Kubernetes espera encontrar la imagen dentro del clúster y no intenta descargarla de un registro.
+
+Comprueba que el `Deployment` utilice exactamente el mismo nombre y etiqueta:
+
+```yaml
+image: cartera-agent-demo:1.0.0
+imagePullPolicy: Never
+```
+
+#### 3. Crear el namespace
+
+```bash
+kubectl create namespace cartera-demo
+```
+
+Si ya existe, Kubernetes mostrará `AlreadyExists`; puedes continuar.
+
+#### 4. Crear el Secret de AWS
+
+Primero valida y exporta credenciales temporales desde el perfil local:
+
+```bash
+aws sts get-caller-identity
+eval "$(aws configure export-credentials --profile default --format env)"
+```
+
+Para un perfil SSO, inicia sesión y reemplaza `default` por su nombre:
+
+```bash
+aws sso login --profile nombre-del-perfil
+eval "$(aws configure export-credentials --profile nombre-del-perfil --format env)"
+```
+
+Crea o actualiza el Secret sin escribir los valores en un archivo del repositorio:
+
+```bash
+kubectl create secret generic cartera-strands-agent-secret \
+  --namespace cartera-demo \
+  --from-literal=AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
+  --from-literal=AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
+  --from-literal=AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN:-}" \
+  --dry-run=client \
+  -o yaml | kubectl apply -f -
+```
+
+No apliques `kubernetes/secret.yaml` sin reemplazar sus valores de ejemplo. Las credenciales temporales caducan; cuando eso ocurra, vuelve a exportarlas, recrea el Secret con el comando anterior y reinicia el `Deployment`.
+
+#### 5. Desplegar la configuración y la aplicación
+
+```bash
+kubectl apply -n cartera-demo -f kubernetes/configmap.yaml
+kubectl apply -n cartera-demo -f kubernetes/service.yaml
+kubectl apply -n cartera-demo -f kubernetes/deployment.yaml
+```
+
+Verifica el despliegue:
+
+```bash
+kubectl rollout status deployment/cartera-strands-agent \
+  -n cartera-demo \
+  --timeout=120s
+
+kubectl get all -n cartera-demo
+```
+
+Si aparece `ErrImageNeverPull`, importa nuevamente la etiqueta exacta usada por el manifiesto:
+
+```bash
+k3d image import cartera-agent-demo:1.0.0 --cluster cartera-demo
+kubectl rollout restart deployment/cartera-strands-agent -n cartera-demo
+```
+
+Consulta los eventos y logs si el pod no inicia:
+
+```bash
+kubectl describe pod -n cartera-demo \
+  -l app=cartera-strands-agent
+
+kubectl logs -n cartera-demo \
+  deployment/cartera-strands-agent \
+  --tail=100
+```
+
+#### 6. Acceder al portal
+
+El `Service` es de tipo `ClusterIP`, así que para la demo se puede usar port-forward:
+
+```bash
+kubectl port-forward \
+  -n cartera-demo \
+  service/cartera-strands-agent \
+  8080:80
+```
+
+Abre `http://127.0.0.1:8080` o valida la API desde otra terminal:
+
+```bash
+curl http://127.0.0.1:8080/health
+curl http://127.0.0.1:8080/ready
+```
+
+#### 7. Aumentar o reducir réplicas
+
+Para escalar inmediatamente a tres pods:
+
+```bash
+kubectl scale deployment/cartera-strands-agent \
+  --replicas=3 \
+  -n cartera-demo
+```
+
+Observa cómo se crean:
+
+```bash
+kubectl get pods -n cartera-demo -w
+```
+
+Para volver a una réplica:
+
+```bash
+kubectl scale deployment/cartera-strands-agent \
+  --replicas=1 \
+  -n cartera-demo
+```
+
+Para que la cantidad sea declarativa y permanezca después de volver a aplicar los manifiestos, cambia `spec.replicas` en `kubernetes/deployment.yaml` y ejecuta:
+
+```bash
+kubectl apply -n cartera-demo -f kubernetes/deployment.yaml
+```
+
+La versión actual del manifiesto declara dos réplicas. Sin embargo, cada pod mantiene sus sesiones en su propia memoria. El `Service` puede enviar mensajes consecutivos de una misma conversación a pods distintos, por lo que la memoria conversacional no es consistente al escalar. Para esta demo usa una réplica cuando necesites continuidad de sesión, o realiza consultas independientes con varias réplicas. En un entorno empresarial, almacena las sesiones en un servicio compartido como Redis, DynamoDB o AgentCore Memory.
+
+#### 8. Publicar una versión nueva
+
+Usa una etiqueta nueva en vez de sobrescribir `1.0.0`:
+
+```bash
+docker build -t cartera-agent-demo:1.0.1 .
+k3d image import cartera-agent-demo:1.0.1 --cluster cartera-demo
+kubectl set image deployment/cartera-strands-agent \
+  cartera-strands-agent=cartera-agent-demo:1.0.1 \
+  -n cartera-demo
+kubectl rollout status deployment/cartera-strands-agent \
+  -n cartera-demo \
+  --timeout=120s
+```
+
+Actualiza también `image:` en `kubernetes/deployment.yaml` para que el estado declarativo coincida con el cambio aplicado mediante `kubectl set image`.
+
+Para ver los logs de todas las réplicas:
+
+```bash
+kubectl logs -n cartera-demo \
+  -l app=cartera-strands-agent \
+  --prefix \
+  --tail=100
+```
+
+Al terminar la demo, elimina todos los recursos creados en ese namespace:
+
+```bash
+kubectl delete namespace cartera-demo
+```
+
+En producción no distribuyas claves de acceso estáticas mediante un `Secret` convencional. Usa una identidad asociada al workload y un gestor de secretos; además, agrega autenticación, HTTPS, límites de tráfico, observabilidad y almacenamiento compartido de sesiones.
 
 ## AgentCore
 

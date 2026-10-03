@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cartera-strands-agent
+  labels:
+    app: cartera-strands-agent
+spec:
+  type: ClusterIP
+  selector:
+    app: cartera-strands-agent
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

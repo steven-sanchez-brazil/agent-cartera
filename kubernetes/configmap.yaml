@@ -6,4 +6,5 @@ metadata:
     app: cartera-strands-agent
 data:
   AWS_REGION: "us-east-1"
-  BEDROCK_MODEL_ID: "anthropic.claude-3-sonnet-20240229-v1:0"
+  BEDROCK_MODEL_ID: "amazon.nova-lite-v1:0"
+  MAX_DEMO_SESSIONS: "100"
